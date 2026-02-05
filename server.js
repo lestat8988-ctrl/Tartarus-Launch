@@ -266,22 +266,25 @@ io.on('connection', (socket) => {
 });
 
 const PORT = process.env.PORT || 3000;
+
+// 환경 변수 디버깅 로그
+console.log('[ENV] PORT =', process.env.PORT);
+console.log('[ENV] RUN_SIMULATION =', JSON.stringify(process.env.RUN_SIMULATION));
+
 server.listen(PORT, '0.0.0.0', () => {
   console.log(`Tartarus Protocol server running on http://0.0.0.0:${PORT}`);
   console.log('[SYSTEM] 턴제 시스템 활성화됨');
   
   // 시뮬레이션 모듈 실행 (환경 변수로 제어)
-  if (process.env.RUN_SIMULATION === 'true') {
-    console.log('[SYSTEM] AI 시뮬레이션 모듈 시작 중...');
-    const child = fork('./simulation.js');
-    
-    child.on('exit', (code, signal) => {
-      console.log(`[SYSTEM] AI 시뮬레이션 모듈 종료: code=${code}, signal=${signal}`);
-    });
-    
-    child.on('error', (err) => {
-      console.error('[SYSTEM] AI 시뮬레이션 모듈 오류:', err);
-    });
+  const runSim = String(process.env.RUN_SIMULATION || '').trim().toLowerCase() === 'true';
+  
+  if (runSim) {
+    console.log('[SYSTEM] Starting simulation...');
+    const child = fork('./simulation.js', [], { env: process.env });
+    child.on('exit', (code) => console.log('[SYSTEM] simulation exit', code));
+    child.on('error', (err) => console.error('[SYSTEM] simulation error', err));
+  } else {
+    console.log('[SYSTEM] RUN_SIMULATION is disabled');
   }
 });
 
