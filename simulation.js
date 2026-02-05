@@ -16,8 +16,8 @@ const client = new OpenAI({
 });
 
 // Socket.IO 클라이언트 (로컬 서버 연결)
-const SERVER_PORT = process.env.PORT || 3000;
-const socket = io(`http://localhost:${SERVER_PORT}`, {
+const PORT = process.env.PORT || 3000;
+const socket = io(`http://127.0.0.1:${PORT}`, {
   transports: ['websocket'],
 });
 
