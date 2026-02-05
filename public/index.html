@@ -1,0 +1,811 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Tartarus Protocol</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      :root {
+        color-scheme: dark;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        height: 100vh;
+        background: #000;
+        color: #0f0;
+        font-family: "Consolas", "Courier New", monospace;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .frame {
+        border: 1px solid #0f0;
+        margin: 12px;
+        padding: 8px 10px;
+        box-shadow: 0 0 12px rgba(0, 255, 0, 0.3);
+        display: flex;
+        flex-direction: column;
+        flex: 1;
+        min-height: 0;
+      }
+
+      .title-bar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 6px;
+        font-size: 12px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+
+      .title-left {
+        opacity: 0.8;
+      }
+
+      .title-right span {
+        display: inline-block;
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        margin-left: 4px;
+        box-shadow: 0 0 6px rgba(0, 255, 0, 0.7);
+      }
+
+      .title-right .led-online {
+        background: #0f0;
+      }
+
+      .terminal {
+        flex: 1;
+        min-height: 0;
+        border-top: 1px solid #0f0;
+        padding-top: 6px;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        position: relative;
+      }
+
+      /* 붉은 노이즈 오버레이 */
+      .terminal::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: 
+          repeating-linear-gradient(
+            0deg,
+            rgba(255, 0, 0, 0.03) 0px,
+            transparent 1px,
+            transparent 2px,
+            rgba(255, 0, 0, 0.03) 3px
+          ),
+          repeating-linear-gradient(
+            90deg,
+            rgba(255, 0, 0, 0.02) 0px,
+            transparent 1px,
+            transparent 2px,
+            rgba(255, 0, 0, 0.02) 3px
+          );
+        pointer-events: none;
+        z-index: 1;
+        opacity: 0.3;
+        animation: noise-flicker 0.15s infinite;
+      }
+
+      @keyframes noise-flicker {
+        0%, 100% { opacity: 0.2; }
+        50% { opacity: 0.4; }
+      }
+
+      /* 핏자국 효과 */
+      .terminal::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-image: 
+          radial-gradient(circle at 20% 30%, rgba(139, 0, 0, 0.1) 0%, transparent 50%),
+          radial-gradient(circle at 80% 70%, rgba(139, 0, 0, 0.08) 0%, transparent 50%),
+          radial-gradient(circle at 50% 50%, rgba(139, 0, 0, 0.05) 0%, transparent 50%);
+        pointer-events: none;
+        z-index: 1;
+      }
+
+      #log {
+        flex: 1;
+        overflow-y: auto;
+        padding-right: 4px;
+        padding-bottom: 200px; /* 하단 여백 확보 (입력창/버튼에 가려지지 않게) */
+        font-size: 14px;
+        line-height: 1.4;
+        position: relative;
+        z-index: 2;
+      }
+
+      .line {
+        white-space: pre-wrap;
+        word-break: break-word;
+      }
+
+      .system {
+        color: #6f6;
+      }
+
+      /* 역할별 텍스트 컬러 */
+      .role-captain {
+        color: #ff5555;
+        text-shadow: 0 0 5px #ff0000;
+      }
+
+      .role-engineer {
+        color: #ffaa00;
+      }
+
+      .role-doctor {
+        color: #00ffff;
+      }
+
+      .role-pilot {
+        color: #5588ff;
+      }
+
+      .role-system {
+        color: #00ff00;
+      }
+
+      .role-commander {
+        color: #ff00ff;
+        font-weight: bold;
+      }
+
+      /* 글리치 효과 (특정 키워드) */
+      .glitch {
+        animation: glitch-text 0.3s infinite;
+        text-shadow: 
+          2px 0 #ff0000,
+          -2px 0 #00ffff,
+          0 0 #ff0000;
+      }
+
+      @keyframes glitch-text {
+        0% {
+          transform: translate(0);
+          filter: hue-rotate(0deg);
+        }
+        20% {
+          transform: translate(-2px, 2px);
+          filter: hue-rotate(90deg);
+        }
+        40% {
+          transform: translate(-2px, -2px);
+          filter: hue-rotate(180deg);
+        }
+        60% {
+          transform: translate(2px, 2px);
+          filter: hue-rotate(270deg);
+        }
+        80% {
+          transform: translate(2px, -2px);
+          filter: hue-rotate(360deg);
+        }
+        100% {
+          transform: translate(0);
+          filter: hue-rotate(0deg);
+        }
+      }
+
+      /* 시간 표시 */
+      .time-display {
+        position: absolute;
+        top: 8px;
+        right: 12px;
+        font-size: 11px;
+        color: #0f0;
+        z-index: 10;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+      }
+
+      .time-display.low {
+        color: #ff5555;
+        animation: pulse-red 1s infinite;
+      }
+
+      @keyframes pulse-red {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.5; }
+      }
+
+      /* ACCUSE 버튼 */
+      .accuse-btn {
+        background: transparent;
+        border: 2px solid #ff0000;
+        color: #ff0000;
+        padding: 8px 16px;
+        font: inherit;
+        font-size: 12px;
+        cursor: pointer;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        transition: all 0.3s;
+        margin-top: 8px;
+        width: 100%;
+      }
+
+      .accuse-btn:hover:not(:disabled) {
+        background: rgba(255, 0, 0, 0.1);
+        box-shadow: 0 0 15px rgba(255, 0, 0, 0.5);
+      }
+
+      .accuse-btn:disabled {
+        opacity: 0.3;
+        cursor: not-allowed;
+      }
+
+      /* ACCUSE 모달 */
+      .accuse-modal {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.95);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+        border: 2px solid #ff0000;
+      }
+
+      .accuse-modal.active {
+        display: flex;
+      }
+
+      .accuse-modal-content {
+        background: #000;
+        border: 2px solid #ff0000;
+        padding: 24px;
+        min-width: 300px;
+        box-shadow: 0 0 30px rgba(255, 0, 0, 0.5);
+      }
+
+      .accuse-modal-title {
+        color: #ff0000;
+        font-size: 16px;
+        text-align: center;
+        margin-bottom: 20px;
+        text-transform: uppercase;
+        letter-spacing: 0.2em;
+      }
+
+      .accuse-options {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+
+      .accuse-option-btn {
+        background: transparent;
+        border: 1px solid #ff0000;
+        color: #ff0000;
+        padding: 12px;
+        font: inherit;
+        font-size: 14px;
+        cursor: pointer;
+        transition: all 0.2s;
+        text-align: center;
+      }
+
+      .accuse-option-btn:hover {
+        background: rgba(255, 0, 0, 0.1);
+        box-shadow: 0 0 10px rgba(255, 0, 0, 0.3);
+      }
+
+      .accuse-cancel-btn {
+        margin-top: 12px;
+        background: transparent;
+        border: 1px solid #666;
+        color: #666;
+        padding: 8px;
+        font: inherit;
+        font-size: 12px;
+        cursor: pointer;
+        width: 100%;
+      }
+
+      .accuse-cancel-btn:hover {
+        border-color: #999;
+        color: #999;
+      }
+
+      .choices-container {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 8px;
+        flex-wrap: wrap;
+      }
+
+      .choice-btn {
+        background: transparent;
+        border: 1px solid rgba(0, 255, 0, 0.5);
+        color: #0f0;
+        padding: 6px 12px;
+        font: inherit;
+        font-size: 12px;
+        cursor: pointer;
+        transition: all 0.2s;
+        flex: 1;
+        min-width: 120px;
+      }
+
+      .choice-btn:hover:not(:disabled) {
+        background: rgba(0, 255, 0, 0.1);
+        border-color: #0f0;
+        box-shadow: 0 0 8px rgba(0, 255, 0, 0.3);
+      }
+
+      .choice-btn:disabled {
+        opacity: 0.3;
+        cursor: not-allowed;
+      }
+
+      /* 게임 오버 오버레이 */
+      .game-over-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.9);
+        display: none;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        z-index: 100;
+        border: 2px solid #ff0000;
+        box-shadow: 0 0 20px rgba(255, 0, 0, 0.5);
+      }
+
+      .game-over-overlay.active {
+        display: flex;
+      }
+
+      .game-over-message {
+        color: #ff0000;
+        font-size: 18px;
+        text-align: center;
+        margin-bottom: 20px;
+        text-shadow: 0 0 10px #ff0000;
+        letter-spacing: 0.2em;
+        line-height: 1.6;
+      }
+
+      .restart-btn {
+        background: transparent;
+        border: 2px solid #0f0;
+        color: #0f0;
+        padding: 12px 24px;
+        font: inherit;
+        font-size: 14px;
+        cursor: pointer;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        transition: all 0.3s;
+      }
+
+      .restart-btn:hover {
+        background: rgba(0, 255, 0, 0.1);
+        box-shadow: 0 0 15px rgba(0, 255, 0, 0.5);
+        transform: scale(1.05);
+      }
+
+      .input-row {
+        display: flex;
+        align-items: center;
+        border-top: 1px solid rgba(0, 255, 0, 0.4);
+        padding-top: 4px;
+        margin-top: 4px;
+      }
+
+      .prompt {
+        margin-right: 4px;
+      }
+
+      #input {
+        flex: 1;
+        background: transparent;
+        border: none;
+        outline: none;
+        color: #0f0;
+        font: inherit;
+      }
+
+      #input:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+
+      #input::placeholder {
+        color: rgba(0, 255, 0, 0.4);
+      }
+
+      .waiting {
+        color: rgba(0, 255, 0, 0.6);
+        font-size: 12px;
+        margin-top: 4px;
+      }
+
+      .cursor {
+        display: inline-block;
+        width: 8px;
+        background: #0f0;
+        margin-left: 2px;
+        animation: blink 1s steps(2, start) infinite;
+      }
+
+      @keyframes blink {
+        to {
+          visibility: hidden;
+        }
+      }
+
+      /* 스크롤바 */
+      #log::-webkit-scrollbar {
+        width: 6px;
+      }
+
+      #log::-webkit-scrollbar-track {
+        background: #000;
+      }
+
+      #log::-webkit-scrollbar-thumb {
+        background: rgba(0, 255, 0, 0.4);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="frame">
+      <div class="title-bar">
+        <div class="title-left">TARTARUS PROTOCOL v0.1</div>
+        <div class="title-right">
+          LINK STATUS
+          <span class="led-online"></span>
+        </div>
+        <div class="time-display" id="timeDisplay">[TIME] 10:00</div>
+      </div>
+      <div class="terminal">
+        <div id="log"></div>
+        <div class="choices-container" id="choicesContainer"></div>
+        <div class="input-row">
+          <span class="prompt">&gt;</span>
+          <input
+            id="input"
+            type="text"
+            autocomplete="off"
+            spellcheck="false"
+            placeholder="메시지를 입력하고 Enter를 누르세요..."
+          />
+          <span class="cursor"></span>
+        </div>
+        <div class="waiting" id="waitingIndicator" style="display: none;">
+          [SYSTEM] AI 응답 대기 중...
+        </div>
+        <button class="accuse-btn" id="accuseBtn">[긴급 처형 (ACCUSE)]</button>
+        <!-- 게임 오버 오버레이 -->
+        <div class="game-over-overlay" id="gameOverOverlay">
+          <div class="game-over-message" id="gameOverMessage">
+            LOG RECORDING ENDED.<br />NO SURVIVORS.
+          </div>
+          <button class="restart-btn" id="restartBtn">[SYSTEM REBOOT]</button>
+        </div>
+        <!-- ACCUSE 모달 -->
+        <div class="accuse-modal" id="accuseModal">
+          <div class="accuse-modal-content">
+            <div class="accuse-modal-title">배신자를 선택하세요</div>
+            <div class="accuse-options" id="accuseOptions">
+              <button class="accuse-option-btn" data-target="선장">선장</button>
+              <button class="accuse-option-btn" data-target="엔지니어">엔지니어</button>
+              <button class="accuse-option-btn" data-target="의사">의사</button>
+              <button class="accuse-option-btn" data-target="파일럿">파일럿</button>
+            </div>
+            <button class="accuse-cancel-btn" id="accuseCancelBtn">취소</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- socket.io 클라이언트 -->
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+      const logEl = document.getElementById('log');
+      const inputEl = document.getElementById('input');
+      const choicesContainer = document.getElementById('choicesContainer');
+      const waitingIndicator = document.getElementById('waitingIndicator');
+      const timeDisplay = document.getElementById('timeDisplay');
+      const gameOverOverlay = document.getElementById('gameOverOverlay');
+      const gameOverMessage = document.getElementById('gameOverMessage');
+      const restartBtn = document.getElementById('restartBtn');
+      const accuseBtn = document.getElementById('accuseBtn');
+      const accuseModal = document.getElementById('accuseModal');
+      const accuseOptions = document.getElementById('accuseOptions');
+      const accuseCancelBtn = document.getElementById('accuseCancelBtn');
+
+      let isWaitingForResponse = false;
+      let currentTime = 600; // 10분 = 600초
+
+      function getRoleClass(text) {
+        // 메시지 시작 부분을 확인하여 역할 클래스 반환
+        if (text.startsWith('선장:')) {
+          return 'role-captain';
+        } else if (text.startsWith('엔지니어:')) {
+          return 'role-engineer';
+        } else if (text.startsWith('의사:')) {
+          return 'role-doctor';
+        } else if (text.startsWith('파일럿:')) {
+          return 'role-pilot';
+        } else if (text.startsWith('타르타로스:')) {
+          return 'role-system';
+        } else if (text.startsWith('[COMMANDER]') || text.startsWith('> ')) {
+          return 'role-commander';
+        }
+        return '';
+      }
+
+      function hasGlitchKeywords(text) {
+        const keywords = ['죽음', '눈', '지옥', '구원', '해방', '아름다움'];
+        return keywords.some(keyword => text.includes(keyword));
+      }
+
+      // 자동 스크롤 함수
+      function scrollToBottom() {
+        // requestAnimationFrame을 사용하여 DOM 업데이트 후 스크롤
+        requestAnimationFrame(() => {
+          logEl.scrollTop = logEl.scrollHeight;
+        });
+      }
+
+      function appendLine(text, className) {
+        const line = document.createElement('div');
+        let roleClass = getRoleClass(text);
+        let finalClassName = 'line';
+        
+        if (className) {
+          finalClassName += ' ' + className;
+        }
+        if (roleClass) {
+          finalClassName += ' ' + roleClass;
+        }
+        
+        // 글리치 효과 적용 (특정 키워드 포함 시)
+        if (hasGlitchKeywords(text)) {
+          finalClassName += ' glitch';
+          // 2초 후 글리치 효과 제거 (일시적 효과)
+          setTimeout(() => {
+            line.classList.remove('glitch');
+          }, 2000);
+        }
+        
+        line.className = finalClassName;
+        line.textContent = text;
+        logEl.appendChild(line);
+        scrollToBottom(); // 자동 스크롤
+      }
+
+      function updateChoices(choices) {
+        choicesContainer.innerHTML = '';
+        if (!choices || choices.length === 0) return;
+
+        choices.forEach((choice) => {
+          const btn = document.createElement('button');
+          btn.className = 'choice-btn';
+          btn.textContent = choice;
+          btn.addEventListener('click', () => {
+            // 버튼 클릭 시 해당 텍스트를 입력창에 넣고 전송
+            inputEl.value = choice;
+            sendAction(choice);
+          });
+          choicesContainer.appendChild(btn);
+        });
+      }
+
+      function setWaitingState(waiting) {
+        isWaitingForResponse = waiting;
+        inputEl.disabled = waiting;
+        waitingIndicator.style.display = waiting ? 'block' : 'none';
+
+        // 선택지 버튼들도 비활성화
+        const buttons = choicesContainer.querySelectorAll('.choice-btn');
+        buttons.forEach((btn) => {
+          btn.disabled = waiting;
+        });
+
+        // ACCUSE 버튼도 게임 오버 시 비활성화
+        if (gameOverOverlay.classList.contains('active')) {
+          accuseBtn.disabled = true;
+        }
+      }
+
+      function sendAction(actionText) {
+        if (isWaitingForResponse) return;
+
+        const value = actionText || inputEl.value.trim();
+        if (!value) return;
+
+        // 서버로 액션 전송 (턴제)
+        // 메시지는 서버를 통해 chat message로 받아서 표시됨
+        socket.emit('action', {
+          message: value,
+          playerAction: value,
+        });
+
+        inputEl.value = '';
+        setWaitingState(true);
+        updateChoices([]); // 선택지 초기화
+      }
+
+      // 초기 시스템 메시지
+      appendLine('[SYSTEM] Tartarus Protocol booting...', 'system');
+
+      const socket = io();
+
+
+      socket.on('disconnect', () => {
+        appendLine('[SYSTEM] Connection lost. Searching for route...', 'system');
+        scrollToBottom(); // 자동 스크롤
+      });
+
+      // 서버에서 온 채팅 메시지 처리 (오직 여기서만 appendLine 실행)
+      socket.on('chat message', (msg) => {
+        appendLine(msg);
+        scrollToBottom(); // 자동 스크롤
+      });
+
+      // 서버에서 온 게임 응답 처리 (AI 응답 + 선택지)
+      socket.on('game response', (response) => {
+        const { message, choices } = response;
+
+        // AI 메시지는 이미 chat message로 받았을 수 있으므로 중복 체크
+        // 선택지 업데이트
+        if (choices && choices.length > 0) {
+          updateChoices(choices);
+        }
+
+        // 대기 상태 해제
+        setWaitingState(false);
+        inputEl.focus();
+      });
+
+      // 시간 업데이트
+      socket.on('time update', (data) => {
+        currentTime = data.timeRemaining;
+        const minutes = Math.floor(currentTime / 60);
+        const seconds = currentTime % 60;
+        timeDisplay.textContent = `[TIME] ${minutes}:${String(seconds).padStart(2, '0')}`;
+        
+        // 시간이 2분 이하이면 경고 스타일
+        if (currentTime <= 120) {
+          timeDisplay.classList.add('low');
+        } else {
+          timeDisplay.classList.remove('low');
+        }
+      });
+
+      // 게임 오버 처리
+      socket.on('game_over', (data) => {
+        console.log('[CLIENT] game_over 이벤트 수신:', data);
+        
+        // 채팅 로그에 메시지 추가
+        appendLine(data.message, 'system');
+        scrollToBottom(); // 자동 스크롤
+        
+        // 모든 입력 비활성화
+        setWaitingState(true);
+        inputEl.disabled = true;
+        accuseBtn.disabled = true;
+        updateChoices([]);
+        
+        // 배신자 이름 매핑 (영문 -> 한글)
+        const traitorNameMapping = {
+          'Captain': '선장',
+          'Engineer': '엔지니어',
+          'Doctor': '의사',
+          'Pilot': '파일럿',
+        };
+        const realTraitorName = data.realTraitor ? traitorNameMapping[data.realTraitor] || data.realTraitor : '알 수 없음';
+        
+        // 게임 오버 오버레이 표시
+        if (data.result === 'victory') {
+          gameOverMessage.innerHTML = `<span style="color: #00ff00; font-size: 24px; text-shadow: 0 0 10px #00ff00;">VICTORY</span><br /><br /><span style="color: #00ff00; font-size: 14px;">${data.message || ''}</span><br /><br /><span style="color: #888; font-size: 11px;">진짜 배신자 식별 코드: [${realTraitorName}]</span>`;
+        } else {
+          gameOverMessage.innerHTML = `<span style="color: #ff0000; font-size: 24px; text-shadow: 0 0 10px #ff0000;">DEFEAT</span><br /><br /><span style="color: #ff0000; font-size: 14px;">${data.message || ''}</span><br /><br /><span style="color: #888; font-size: 11px;">진짜 배신자 식별 코드: [${realTraitorName}]</span>`;
+        }
+        
+        gameOverOverlay.classList.add('active');
+      });
+
+      // 시스템 리셋 처리 (게임 재시작)
+      socket.on('system_reset', () => {
+        console.log('[CLIENT] system_reset 이벤트 수신');
+        
+        // 게임 오버 오버레이 숨기기
+        gameOverOverlay.classList.remove('active');
+        // ACCUSE 모달 숨기기
+        accuseModal.classList.remove('active');
+        // 로그 초기화
+        logEl.innerHTML = '';
+        // 상태 초기화
+        currentTime = 600;
+        timeDisplay.textContent = '[TIME] 10:00';
+        timeDisplay.classList.remove('low');
+        isWaitingForResponse = false;
+        inputEl.disabled = false;
+        accuseBtn.disabled = false;
+        updateChoices([]);
+        // 초기 메시지
+        appendLine('[SYSTEM] 시스템 리부트 완료. 새로운 타임라인 동기화 중...', 'system');
+        scrollToBottom(); // 자동 스크롤
+        inputEl.focus();
+      });
+
+      // 재시작 버튼 클릭
+      restartBtn.addEventListener('click', () => {
+        // 서버에 재시작 요청 전송
+        socket.emit('restart_game');
+      });
+
+      // ACCUSE 버튼 클릭
+      accuseBtn.addEventListener('click', () => {
+        if (isWaitingForResponse) return;
+        accuseModal.classList.add('active');
+      });
+
+      // ACCUSE 모달 취소
+      accuseCancelBtn.addEventListener('click', () => {
+        accuseModal.classList.remove('active');
+      });
+
+      // ACCUSE 옵션 버튼 클릭
+      accuseOptions.querySelectorAll('.accuse-option-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const targetName = btn.getAttribute('data-target');
+          accuseModal.classList.remove('active');
+          appendLine(`[SYSTEM] ${targetName}을(를) 배신자로 고발합니다...`, 'system');
+          socket.emit('accuse', { targetName: targetName });
+          accuseBtn.disabled = true;
+        });
+      });
+
+      // 초기 상태 요청
+      socket.on('connect', () => {
+        appendLine('[SYSTEM] Core link established.', 'system');
+        appendLine('[SYSTEM] 마피아 게임 모드 활성화. 제한 시간 내 배신자를 찾으세요.', 'system');
+        scrollToBottom(); // 자동 스크롤
+        socket.emit('request-initial-state');
+      });
+
+      // 입력 핸들링
+      inputEl.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          sendAction();
+        }
+      });
+
+      // 페이지 로드 후 인풋 포커스
+      window.addEventListener('load', () => {
+        inputEl.focus();
+      });
+    </script>
+  </body>
+</html>
+
