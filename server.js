@@ -95,7 +95,7 @@ io.on('connection', (socket) => {
   console.log('새로운 생명체 연결됨');
 
   // 환영 메시지 전송 (게임 목표 설명)
-  const welcomeMessage = '[SYSTEM] ⚠️ [긴급 경보] 타르타로스 호 엔진 과부하 감지.\n\n현재 승무원 4명 중 인간으로 위장한 \'AI 배신자\'가 숨어있습니다.\n당신의 임무: 대화를 통해 배신자를 색출하고 투표로 제거하십시오.\n실패 시 우주선은 30분 뒤 폭발합니다.\n\n>> 시작하려면 아무 메시지나 입력하여 심문을 시작하세요.';
+  const welcomeMessage = '[SYSTEM BOOT SEQUENCE...]\n접속 대상: USSC 타르타로스 (Tartarus)\n목표: 해왕성 궤도 워프 (Neptune Warp)\n\n[SYSTEM] 생명 유지 장치 해제... 냉동 수면 종료.\n\n[ALERT] 함장님(Commander), 비상 사태입니다.\n현재 타르타로스 호는 궤도를 이탈했습니다.\n승무원 중 누군가가 고의로 워프 엔진을 파괴했습니다.\n\n[MISSION]\n1. 대화를 통해 숨어있는 \'범인(AI)\'을 찾아내십시오.\n2. 원자로를 수리하여 함선을 구하십시오.\n\n>> 엔지니어에게 "현재 상황 보고해"라고 명령하십시오.';
   socket.emit('chat message', welcomeMessage);
 
   // simulation.js 연결 감지
