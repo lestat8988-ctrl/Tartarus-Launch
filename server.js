@@ -153,64 +153,107 @@ io.on('connection', (socket) => {
 
   // 배신자 고발 (accuse) 이벤트 처리
   socket.on('accuse', (data) => {
-    if (gameState.gameOver) {
-      console.log('[ACCUSE] 게임이 이미 종료되었습니다.');
-      return;
-    }
+    try {
+      // 게임 오버 체크
+      if (gameState.gameOver) {
+        console.log('[ACCUSE] 게임이 이미 종료되었습니다.');
+        return;
+      }
 
-    const { targetName } = data;
-    if (!targetName) {
-      console.error('[ACCUSE] targetName이 제공되지 않았습니다.');
-      return;
-    }
+      // 데이터 유효성 검사
+      if (!data || typeof data !== 'object') {
+        console.error('[ACCUSE] 잘못된 데이터 형식:', data);
+        socket.emit('game_over', {
+          result: 'defeat',
+          message: '[SYSTEM ERROR] 잘못된 요청 데이터입니다.',
+          realTraitor: gameState.traitor || '알 수 없음',
+        });
+        return;
+      }
 
-    console.log(`[ACCUSE] 플레이어가 ${targetName}을(를) 배신자로 고발`);
+      const { targetName } = data;
+      if (!targetName || typeof targetName !== 'string') {
+        console.error('[ACCUSE] targetName이 제공되지 않았거나 유효하지 않습니다:', targetName);
+        socket.emit('game_over', {
+          result: 'defeat',
+          message: '[SYSTEM ERROR] 대상 이름이 제공되지 않았습니다.',
+          realTraitor: gameState.traitor || '알 수 없음',
+        });
+        return;
+      }
 
-    // 배신자 이름 매핑 (한글 -> 영문)
-    const nameMapping = {
-      '선장': 'Captain',
-      '엔지니어': 'Engineer',
-      '의사': 'Doctor',
-      '파일럿': 'Pilot',
-    };
+      console.log(`[ACCUSE] 플레이어가 ${targetName}을(를) 배신자로 고발`);
 
-    const accusedRole = nameMapping[targetName] || targetName;
+      // 배신자 이름 매핑 (한글 -> 영문)
+      const nameMapping = {
+        '선장': 'Captain',
+        '엔지니어': 'Engineer',
+        '의사': 'Doctor',
+        '파일럿': 'Pilot',
+      };
 
-    // 타이머 정리
-    if (gameTimer) {
-      clearInterval(gameTimer);
-      gameTimer = null;
-    }
+      const accusedRole = nameMapping[targetName] || targetName;
 
-    // 배신자 확인
-    if (accusedRole === gameState.traitor) {
-      // 승리!
+      // 게임 상태 확인
+      if (!gameState.traitor) {
+        console.error('[ACCUSE] 배신자 정보가 초기화되지 않았습니다.');
+        socket.emit('game_over', {
+          result: 'defeat',
+          message: '[SYSTEM ERROR] 게임 상태 오류. 게임을 재시작해주세요.',
+          realTraitor: '알 수 없음',
+        });
+        return;
+      }
+
+      // 타이머 정리
+      if (gameTimer) {
+        clearInterval(gameTimer);
+        gameTimer = null;
+      }
+
+      // 배신자 확인
+      const TRAITOR_IDENTITY = gameState.traitor;
+      const isCorrect = accusedRole === TRAITOR_IDENTITY;
+
+      // 게임 상태 업데이트
       gameState.gameOver = true;
-      gameState.gameResult = 'victory';
-      
-      const victoryMessage = 'TARTARUS SYSTEM: [TARGET TERMINATED]. 관찰 결과: 하얀색 유체(White Fluid) 식별됨. 안드로이드 배신자 제거 성공.';
-      
+      gameState.gameResult = isCorrect ? 'victory' : 'defeat';
+
+      // 결과 메시지 생성
+      let resultMessage;
+      if (isCorrect) {
+        // 승리!
+        resultMessage = 'TARTARUS SYSTEM: [TARGET TERMINATED]. 관찰 결과: 하얀색 유체(White Fluid) 식별됨. 안드로이드 배신자 제거 성공.';
+        console.log(`[VICTORY] 배신자 발견: ${targetName} (${TRAITOR_IDENTITY})`);
+      } else {
+        // 패배
+        resultMessage = 'TARTARUS SYSTEM: [TARGET TERMINATED]. 관찰 결과: 붉은 혈액(Red Blood) 식별됨. 무고한 승무원 사망. 미션 실패.';
+        console.log(`[DEFEAT] 잘못된 고발: ${targetName} (실제 배신자: ${TRAITOR_IDENTITY})`);
+      }
+
+      // 클라이언트에게 결과 전송
       io.emit('chat message', `[SYSTEM] ${targetName} 처형 완료.`);
       io.emit('game_over', {
-        result: 'victory',
-        message: victoryMessage,
-        realTraitor: gameState.traitor, // 진짜 배신자 정보 추가
+        result: gameState.gameResult,
+        message: resultMessage,
+        realTraitor: TRAITOR_IDENTITY,
       });
-      console.log(`[VICTORY] 배신자 발견: ${targetName} (${gameState.traitor})`);
-    } else {
-      // 패배
-      gameState.gameOver = true;
-      gameState.gameResult = 'defeat';
+
+    } catch (error) {
+      // 에러 발생 시 서버 크래시 방지
+      console.error('[ACCUSE] 심각한 오류 발생:', error);
+      console.error('[ACCUSE] 스택 트레이스:', error.stack);
       
-      const defeatMessage = 'TARTARUS SYSTEM: [TARGET TERMINATED]. 관찰 결과: 붉은 혈액(Red Blood) 식별됨. 무고한 승무원 사망. 미션 실패.';
-      
-      io.emit('chat message', `[SYSTEM] ${targetName} 처형 완료.`);
-      io.emit('game_over', {
-        result: 'defeat',
-        message: defeatMessage,
-        realTraitor: gameState.traitor, // 진짜 배신자 정보 추가
-      });
-      console.log(`[DEFEAT] 잘못된 고발: ${targetName} (실제 배신자: ${gameState.traitor})`);
+      // 클라이언트에게 오류 메시지 전송
+      try {
+        io.emit('game_over', {
+          result: 'defeat',
+          message: '[SYSTEM ERROR] 처리 중 오류가 발생했습니다. 게임을 재시작해주세요.',
+          realTraitor: gameState.traitor || '알 수 없음',
+        });
+      } catch (emitError) {
+        console.error('[ACCUSE] 오류 메시지 전송 실패:', emitError);
+      }
     }
   });
 

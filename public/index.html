@@ -32,32 +32,57 @@
         overflow: auto;
       }
 
-      /* CRT 모니터 외관 틀 */
+      /* CRT 모니터 외관 틀 - 오래된 플라스틱 모니터 스타일 */
       .crt-bezel {
         width: 95%;
         max-width: 1200px;
-        background: linear-gradient(135deg, #2a2a2a 0%, #1a1a1a 100%);
-        border: 20px solid #1a1a1a;
-        border-radius: 15px;
+        background: 
+          repeating-linear-gradient(
+            0deg,
+            #dcdcdc 0px,
+            #d0d0c0 1px,
+            #dcdcdc 2px,
+            #c8c8b8 3px,
+            #dcdcdc 4px
+          ),
+          linear-gradient(135deg, #c0c0b0 0%, #d4d4c4 50%, #b8b8a8 100%);
+        background-blend-mode: overlay;
+        border: 35px solid #b0b0a0;
+        border-radius: 20px;
         box-shadow: 
-          0 0 0 3px #0a0a0a,
-          inset 0 0 50px rgba(0, 0, 0, 0.8),
-          0 20px 60px rgba(0, 0, 0, 0.9);
-        padding: 15px;
+          /* 외부 그림자 - 모니터가 바닥에 앉아있는 느낌 */
+          0 25px 80px rgba(0, 0, 0, 0.6),
+          0 10px 30px rgba(0, 0, 0, 0.4),
+          /* 내부 깊이감 - 화면이 안쪽으로 파묻힌 느낌 */
+          inset 0 0 80px rgba(0, 0, 0, 0.7),
+          inset 0 0 40px rgba(0, 0, 0, 0.5),
+          inset 0 20px 60px rgba(0, 0, 0, 0.6),
+          /* 베젤 가장자리 강조 */
+          inset 0 0 0 35px rgba(0, 0, 0, 0.1),
+          /* 플라스틱 질감을 위한 미세한 하이라이트 */
+          inset -5px -5px 20px rgba(255, 255, 255, 0.1),
+          inset 5px 5px 20px rgba(0, 0, 0, 0.2);
+        padding: 20px;
         position: relative;
+        /* 약간의 노이즈 텍스처 */
+        filter: contrast(1.05) brightness(0.98);
       }
 
       .crt-bezel::before {
         content: '';
         position: absolute;
-        top: 10px;
+        top: 15px;
         left: 50%;
         transform: translateX(-50%);
-        width: 60px;
-        height: 8px;
-        background: #0a0a0a;
-        border-radius: 4px;
-        box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.5);
+        width: 70px;
+        height: 10px;
+        background: linear-gradient(180deg, #8a8a7a 0%, #6a6a5a 100%);
+        border-radius: 5px;
+        box-shadow: 
+          inset 0 2px 4px rgba(0, 0, 0, 0.6),
+          inset 0 -1px 2px rgba(255, 255, 255, 0.1),
+          0 2px 4px rgba(0, 0, 0, 0.3);
+        border: 1px solid rgba(0, 0, 0, 0.2);
       }
 
       #game-container {
@@ -944,6 +969,8 @@
           gameOverMessage.innerHTML = `<span style="color: #ff0000; font-size: 24px; text-shadow: 0 0 2px #ff0000;">DEFEAT</span><br /><br /><span style="color: #ff0000; font-size: 14px;">${data.message || ''}</span><br /><br /><span style="color: #888; font-size: 11px;">진짜 배신자 식별 코드: [${realTraitorName}]</span>`;
         }
         
+        // 모달 확실히 표시
+        gameOverOverlay.style.display = 'flex';
         gameOverOverlay.classList.add('active');
       });
 
