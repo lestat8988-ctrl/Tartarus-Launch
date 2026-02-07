@@ -731,7 +731,7 @@
           return 'role-doctor';
         } else if (text.startsWith('파일럿:')) {
           return 'role-pilot';
-        } else if (text.startsWith('타르타로스:')) {
+        } else if (text.startsWith('타르타로스:') || text.startsWith('[SYSTEM]')) {
           return 'role-system';
         } else if (text.startsWith('[COMMANDER]') || text.startsWith('> ')) {
           return 'role-commander';
