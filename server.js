@@ -35,6 +35,9 @@ const gameState = {
 let simulationSocket = null;
 let gameTimer = null; // 타이머 인터벌
 
+// 환영 메시지 상수 (오프닝 스토리)
+const WELCOME_MESSAGE = '[SYSTEM BOOT SEQUENCE...]\n접속 대상: USSC 타르타로스 (Tartarus)\n목표: 해왕성 궤도 워프 (Neptune Warp)\n\n[SYSTEM] 생명 유지 장치 해제... 냉동 수면 종료.\n\n[ALERT] 함장님(Commander), 비상 사태입니다.\n현재 타르타로스 호는 궤도를 이탈했습니다.\n승무원 중 누군가가 고의로 워프 엔진을 파괴했습니다.\n\n[MISSION]\n1. 대화를 통해 숨어있는 \'범인(AI)\'을 찾아내십시오.\n2. 원자로를 수리하여 함선을 구하십시오.\n\n>> 엔지니어에게 "현재 상황 보고해"라고 명령하십시오.';
+
 // 게임 시작 함수 (게임 상태 초기화 및 배신자 랜덤 배정)
 function startGame() {
   // 기존 타이머 정리
@@ -95,8 +98,7 @@ io.on('connection', (socket) => {
   console.log('새로운 생명체 연결됨');
 
   // 환영 메시지 전송 (게임 목표 설명)
-  const welcomeMessage = '[SYSTEM BOOT SEQUENCE...]\n접속 대상: USSC 타르타로스 (Tartarus)\n목표: 해왕성 궤도 워프 (Neptune Warp)\n\n[SYSTEM] 생명 유지 장치 해제... 냉동 수면 종료.\n\n[ALERT] 함장님(Commander), 비상 사태입니다.\n현재 타르타로스 호는 궤도를 이탈했습니다.\n승무원 중 누군가가 고의로 워프 엔진을 파괴했습니다.\n\n[MISSION]\n1. 대화를 통해 숨어있는 \'범인(AI)\'을 찾아내십시오.\n2. 원자로를 수리하여 함선을 구하십시오.\n\n>> 엔지니어에게 "현재 상황 보고해"라고 명령하십시오.';
-  socket.emit('chat message', welcomeMessage);
+  socket.emit('chat message', WELCOME_MESSAGE);
 
   // simulation.js 연결 감지
   socket.on('simulation-ready', () => {
@@ -249,6 +251,8 @@ io.on('connection', (socket) => {
   // 게임 재시작 요청
   socket.on('restart_game', () => {
     startGame();
+    // 모든 클라이언트에게 오프닝 메시지 재전송
+    io.emit('chat message', WELCOME_MESSAGE);
     // 모든 클라이언트에게 게임 재시작 알림
     io.emit('system_reset');
     // AI 시뮬레이션 모듈에 새로운 배신자 정보 전송
