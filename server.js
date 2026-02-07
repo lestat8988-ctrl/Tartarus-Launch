@@ -135,7 +135,7 @@ io.on('connection', (socket) => {
       simulationSocket.emit('generateResponse', {
         turn: gameState.turn,
         playerAction: playerAction || message,
-        conversation: gameState.conversation.slice(-20), // 최근 20개만
+        conversation: gameState.conversation.slice(-12), // 최근 12턴만 (API 비용 절약)
         gameState: {
           location: gameState.playerLocation,
           isAlive: gameState.isAlive,

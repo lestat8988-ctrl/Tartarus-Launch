@@ -91,11 +91,13 @@ async function generateAIResponse(context) {
   // 현재 캐릭터가 배신자인지 확인
   const isTraitor = secretTraitorRole && character.roleName === secretTraitorRole;
 
-  // 대화 히스토리 텍스트 생성
+  // 대화 히스토리 텍스트 생성 (API 비용 절약: 최근 12턴만 사용)
+  const maxHistoryLength = 12;
+  const recentConversation = conversation.slice(-maxHistoryLength);
   const historyText =
-    conversation.length === 0
+    recentConversation.length === 0
       ? '(현재 시각, 실험용 중력 엔진(Gravity Drive) 가동 직후입니다. 우리는 초공간 도약에 성공한 줄 알았으나, 창밖에는 핏빛 안개와 번개만 보입니다.)'
-      : conversation
+      : recentConversation
           .map((m) => `${m.speaker}: ${m.text}`)
           .join('\n');
 
