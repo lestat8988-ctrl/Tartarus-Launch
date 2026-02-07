@@ -1105,9 +1105,17 @@
 
       // 재시작 버튼 클릭
       restartBtn.addEventListener('click', () => {
+        // 모달 즉시 닫기
+        gameOverOverlay.style.display = 'none';
+        gameOverOverlay.classList.remove('active');
+        
+        // 채팅창 내용 비우기
+        logEl.innerHTML = '';
+        
         // 즉시 피드백 메시지 출력
         appendLine('[SYSTEM] 시스템 재부팅 시퀀스 가동... 메모리 초기화 중...', 'system');
         scrollToBottom();
+        
         // 서버에 재시작 요청 전송
         socket.emit('restart_game');
       });
