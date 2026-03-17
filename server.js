@@ -13,9 +13,10 @@ const io = new Server(server, {
   }
 });
 
-// 정적 파일 제공 (public 폴더)
-app.use(express.static(path.join(__dirname, 'public')));
-app.use((req, res) => {
+// 예전 정적 화면(public) 띄우는 코드 삭제됨
+
+// 브라우저로 기본 주소 접속 시 Vercel(프론트엔드)로 리다이렉트
+app.get('/', (req, res) => {
   res.redirect(302, "https://tartarus-project.vercel.app");
 });
 
