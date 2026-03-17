@@ -15,7 +15,7 @@ const io = new Server(server, {
 
 // 정적 파일 제공 (public 폴더)
 app.use(express.static(path.join(__dirname, 'public')));
-app.get("/*", (req, res) => {
+app.use((req, res) => {
   res.redirect(302, "https://tartarus-project.vercel.app");
 });
 
